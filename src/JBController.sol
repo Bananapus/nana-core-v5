@@ -327,8 +327,10 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
         view
         returns (bool)
     {
-        return ruleset.dataHook() != address(0)
-            && IJBRulesetDataHook(ruleset.dataHook()).hasMintPermissionFor({
+        address dataHook = ruleset.dataHook();
+
+        return dataHook != address(0)
+            && IJBRulesetDataHook(dataHook).hasMintPermissionFor({
                 projectId: projectId,
                 ruleset: ruleset,
                 addr: addr
