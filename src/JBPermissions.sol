@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
+import {ERC2771Context} from "@openzeppelin/contracts/metatx/ERC2771Context.sol";
 import {JBPermissionIds} from "@bananapus/permission-ids/src/JBPermissionIds.sol";
 
 import {IJBPermissions} from "./interfaces/IJBPermissions.sol";
@@ -8,7 +9,7 @@ import {JBPermissionsData} from "./structs/JBPermissionsData.sol";
 
 /// @notice Stores permissions for all addresses and operators. Addresses can give permissions to any other address
 /// (i.e. an *operator*) to execute specific operations on their behalf.
-contract JBPermissions is IJBPermissions {
+contract JBPermissions is ERC2771Context, IJBPermissions {
     //*********************************************************************//
     // --------------------------- custom errors ------------------------- //
     //*********************************************************************//
@@ -41,6 +42,13 @@ contract JBPermissions is IJBPermissions {
     /// projects.
     mapping(address operator => mapping(address account => mapping(uint256 projectId => uint256))) public override
         permissionsOf;
+
+    //*********************************************************************//
+    // ---------------------------- constructor -------------------------- //
+    //*********************************************************************//
+
+    /// @param trustedForwarder The trusted forwarder for the ERC2771Context.
+    constructor(address trustedForwarder) ERC2771Context(trustedForwarder);
 
     //*********************************************************************//
     // ------------------------- external views -------------------------- //
@@ -178,6 +186,11 @@ contract JBPermissions is IJBPermissions {
     // -------------------------- internal views ------------------------- //
     //*********************************************************************//
 
+    /// @dev `ERC-2771` specifies the context as being a single address (20 bytes).
+    function _contextSuffixLength() internal view override(ERC2771Context, Context) returns (uint256) {
+        return super._contextSuffixLength();
+    }
+
     /// @notice Checks if a permission is included in a packed permissions data.
     /// @param permissions The packed permissions to check.
     /// @param permissionId The ID of the permission to check for.
@@ -185,6 +198,19 @@ contract JBPermissions is IJBPermissions {
     function _includesPermission(uint256 permissions, uint256 permissionId) internal pure returns (bool) {
         return ((permissions >> permissionId) & 1) == 1;
     }
+
+    /// @notice The calldata. Preferred to use over `msg.data`.
+    /// @return calldata The `msg.data` of this call.
+    function _msgData() internal view override(ERC2771Context, Context) returns (bytes calldata) {
+        return ERC2771Context._msgData();
+    }
+
+    /// @notice The message's sender. Preferred to use over `msg.sender`.
+    /// @return sender The address which sent this call.
+    function _msgSender() internal view override(ERC2771Context, Context) returns (address sender) {
+        return ERC2771Context._msgSender();
+    }
+
 
     /// @notice Converts an array of permission IDs to a packed `uint256`.
     /// @param permissionIds The IDs of the permissions to pack.
@@ -217,12 +243,12 @@ contract JBPermissions is IJBPermissions {
         // Enforce permissions. ROOT operators are allowed to set permissions so long as they are not setting another
         // ROOT permission or setting permissions for a wildcard project ID.
         if (
-            msg.sender != account
+            _msgSender() != account
                 && (
                     _includesPermission({permissions: packed, permissionId: JBPermissionIds.ROOT})
                         || permissionsData.projectId == WILDCARD_PROJECT_ID
                         || !hasPermission({
-                            operator: msg.sender,
+                            operator: _msgSender(),
                             account: account,
                             projectId: permissionsData.projectId,
                             permissionId: JBPermissionIds.ROOT,
@@ -241,7 +267,7 @@ contract JBPermissions is IJBPermissions {
             projectId: permissionsData.projectId,
             permissionIds: permissionsData.permissionIds,
             packed: packed,
-            caller: msg.sender
+            caller: _msgSender()
         });
     }
 }
