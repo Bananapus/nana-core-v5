@@ -63,12 +63,12 @@ contract Deploy is Script, Sphinx {
         TRUSTED_FORWARDER =
             address(new ERC2771Forwarder{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(TRUSTED_FORWARDER_NAME));
 
-        JBPermissions permissions = new JBPermissions{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}();
+        JBPermissions permissions = new JBPermissions{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(TRUSTED_FORWARDER);
         JBProjects projects =
-            new JBProjects{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(safeAddress(), safeAddress());
+            new JBProjects{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(safeAddress(), safeAddress(), TRUSTED_FORWARDER);
         JBDirectory directory =
             new JBDirectory{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(permissions, projects, safeAddress());
-        JBSplits splits = new JBSplits{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(directory);
+        JBSplits splits = new JBSplits{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(directory, TRUSTED_FORWARDER);
         JBRulesets rulesets = new JBRulesets{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(directory);
         JBPrices prices = new JBPrices{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(
             directory, permissions, projects, safeAddress()
