@@ -28,6 +28,9 @@ interface IJBController is IERC165, IJBProjectUriRegistry, IJBDirectoryAccessCon
     event BurnTokens(
         address indexed holder, uint256 indexed projectId, uint256 tokenCount, string memo, address caller
     );
+    event DeployERC20(
+        uint256 indexed projectId, address indexed deployer, bytes32 salt, bytes32 saltHash, address caller
+    );
     event LaunchProject(uint256 rulesetId, uint256 projectId, string projectUri, string memo, address caller);
     event LaunchRulesets(uint256 rulesetId, uint256 projectId, string memo, address caller);
     event MintTokens(
@@ -70,6 +73,7 @@ interface IJBController is IERC165, IJBProjectUriRegistry, IJBDirectoryAccessCon
     function RULESETS() external view returns (IJBRulesets);
     function SPLITS() external view returns (IJBSplits);
     function TOKENS() external view returns (IJBTokens);
+    function OMNICHAIN_RULESET_OPERATOR() external view returns (address);
 
     function allRulesetsOf(
         uint256 projectId,
