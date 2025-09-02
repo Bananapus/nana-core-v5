@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
+import {ERC2771Context} from "@openzeppelin/contracts/metatx/ERC2771Context.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {mulDiv} from "@prb/math/src/Common.sol";
 
@@ -14,7 +15,7 @@ import {IJBProjects} from "./interfaces/IJBProjects.sol";
 
 /// @notice Manages and normalizes price feeds. Price feeds are contracts which return the "pricing currency" cost of 1
 /// "unit currency".
-contract JBPrices is JBControlled, JBPermissioned, Ownable, IJBPrices {
+contract JBPrices is JBControlled, JBPermissioned, ERC2771Context, Ownable, IJBPrices {
     //*********************************************************************//
     // --------------------------- custom errors ------------------------- //
     //*********************************************************************//
@@ -60,15 +61,18 @@ contract JBPrices is JBControlled, JBPermissioned, Ownable, IJBPrices {
     /// @param permissions A contract storing permissions.
     /// @param projects A contract which mints ERC-721s that represent project ownership and transfers.
     /// @param owner The address that will own the contract.
+    /// @param trustedForwarder The trusted forwarder for the ERC2771Context.
     constructor(
         IJBDirectory directory,
         IJBPermissions permissions,
         IJBProjects projects,
-        address owner
+        address owner,
+        address trustedForwarder
     )
         JBControlled(directory)
         JBPermissioned(permissions)
         Ownable(owner)
+        ERC2771Context(trustedForwarder)
     {
         PROJECTS = projects;
     }
@@ -127,6 +131,28 @@ contract JBPrices is JBControlled, JBPermissioned, Ownable, IJBPrices {
         // No price feed available, revert.
         revert JBPrices_PriceFeedNotFound();
     }
+
+    //*********************************************************************//
+    // -------------------------- internal views ------------------------- //
+    //*********************************************************************//
+
+    /// @dev `ERC-2771` specifies the context as being a single address (20 bytes).
+    function _contextSuffixLength() internal view override(ERC2771Context, Context) returns (uint256) {
+        return super._contextSuffixLength();
+    }
+
+    /// @notice The calldata. Preferred to use over `msg.data`.
+    /// @return calldata The `msg.data` of this call.
+    function _msgData() internal view override(ERC2771Context, Context) returns (bytes calldata) {
+        return ERC2771Context._msgData();
+    }
+
+    /// @notice The message's sender. Preferred to use over `msg.sender`.
+    /// @return sender The address which sent this call.
+    function _msgSender() internal view override(ERC2771Context, Context) returns (address sender) {
+        return ERC2771Context._msgSender();
+    }
+
 
     //*********************************************************************//
     // ---------------------- external transactions ---------------------- //
@@ -191,7 +217,7 @@ contract JBPrices is JBControlled, JBPermissioned, Ownable, IJBPrices {
             pricingCurrency: pricingCurrency,
             unitCurrency: unitCurrency,
             feed: feed,
-            caller: msg.sender
+            caller: _msgSender()
         });
     }
 }
