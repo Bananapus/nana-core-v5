@@ -41,8 +41,7 @@ contract Deploy is Script, Sphinx {
     uint256 private CORE_DEPLOYMENT_NONCE = 1;
 
     function configureSphinx() public override {
-        // TODO: Update to contain JB Emergency Developers
-        sphinxConfig.projectName = "nana-core";
+        sphinxConfig.projectName = "nana-core-v5";
         sphinxConfig.mainnets = ["ethereum", "optimism", "base", "arbitrum"];
         sphinxConfig.testnets = ["ethereum_sepolia", "optimism_sepolia", "base_sepolia", "arbitrum_sepolia"];
     }
@@ -51,8 +50,7 @@ contract Deploy is Script, Sphinx {
     function run() public sphinx {
         // Set the manager, this can be changed and won't affect deployment addresses.
         MANAGER = safeAddress();
-        // NOTICE: THIS IS FOR TESTNET ONLY! REPLACE!
-        // TEMP set to be the *testing* safe for the nana-fee-project
+        // Set the owner of the fee project to be the project multisig.
         FEE_PROJECT_OWNER = safeAddress();
 
         // Deploy the protocol.

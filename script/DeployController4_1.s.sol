@@ -15,7 +15,7 @@ contract DeployPeriphery is Script, Sphinx {
     address OMNICHAIN_RULESET_OPERATOR = address(0xa7E0cbCFB2C6dF7db07cC4cA05df681f1307CeDD);
 
     function configureSphinx() public override {
-        sphinxConfig.projectName = "nana-core";
+        sphinxConfig.projectName = "nana-core-v5";
         sphinxConfig.mainnets = ["ethereum", "optimism", "base", "arbitrum"];
         sphinxConfig.testnets = ["ethereum_sepolia", "optimism_sepolia", "base_sepolia", "arbitrum_sepolia"];
     }
