@@ -3,7 +3,7 @@ pragma solidity 0.8.23;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ERC2771Context} from "@openzeppelin/contracts/metatx/ERC2771Context.sol";
-import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {ERC721, Context} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 import {IJBProjects} from "./interfaces/IJBProjects.sol";
@@ -32,7 +32,15 @@ contract JBProjects is ERC721, ERC2771Context, Ownable, IJBProjects {
     /// @param feeProjectOwner The address that will receive the fee-project. If `address(0)` the fee-project will not
     /// be minted.
     /// @param trustedForwarder The trusted forwarder for the ERC2771Context.
-    constructor(address owner, address feeProjectOwner, address trustedForwarder) ERC721("Juicebox Projects", "JUICEBOX") Ownable(owner) ERC2771Context(trustedForwarder) {
+    constructor(
+        address owner,
+        address feeProjectOwner,
+        address trustedForwarder
+    )
+        ERC721("Juicebox Projects", "JUICEBOX")
+        Ownable(owner)
+        ERC2771Context(trustedForwarder)
+    {
         if (feeProjectOwner != address(0)) {
             createFor(feeProjectOwner);
         }

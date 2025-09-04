@@ -48,7 +48,7 @@ contract JBPermissions is ERC2771Context, IJBPermissions {
     //*********************************************************************//
 
     /// @param trustedForwarder The trusted forwarder for the ERC2771Context.
-    constructor(address trustedForwarder) ERC2771Context(trustedForwarder);
+    constructor(address trustedForwarder) ERC2771Context(trustedForwarder) {}
 
     //*********************************************************************//
     // ------------------------- external views -------------------------- //
@@ -187,7 +187,7 @@ contract JBPermissions is ERC2771Context, IJBPermissions {
     //*********************************************************************//
 
     /// @dev `ERC-2771` specifies the context as being a single address (20 bytes).
-    function _contextSuffixLength() internal view override(ERC2771Context, Context) returns (uint256) {
+    function _contextSuffixLength() internal view override(ERC2771Context) returns (uint256) {
         return super._contextSuffixLength();
     }
 
@@ -201,13 +201,13 @@ contract JBPermissions is ERC2771Context, IJBPermissions {
 
     /// @notice The calldata. Preferred to use over `msg.data`.
     /// @return calldata The `msg.data` of this call.
-    function _msgData() internal view override(ERC2771Context, Context) returns (bytes calldata) {
+    function _msgData() internal view override(ERC2771Context) returns (bytes calldata) {
         return ERC2771Context._msgData();
     }
 
     /// @notice The message's sender. Preferred to use over `msg.sender`.
     /// @return sender The address which sent this call.
-    function _msgSender() internal view override(ERC2771Context, Context) returns (address sender) {
+    function _msgSender() internal view override(ERC2771Context) returns (address sender) {
         return ERC2771Context._msgSender();
     }
 

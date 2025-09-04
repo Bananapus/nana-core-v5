@@ -495,15 +495,12 @@ contract JBRulesets is JBControlled, IJBRulesets {
 
     /// @notice The approval status of a given ruleset for a given project ID.
     /// @param projectId The ID of the project the ruleset belongs to.
-    /// @param rulesetId The ID of the ruleset to get the approval status of.
-    /// @param start The start time of the ruleset to get the approval status of.
-    /// @param approvalHookRulesetId The ID of the ruleset with the approval hook that should be checked against.
     /// @param ruleset The ruleset to get the approval status of.
     /// @return The approval status of the project.
-    function _approvalStatusOf(uint256 projectId, JBRuleset memory ruleset) internal view  returns (JBApprovalStatus) {
+    function _approvalStatusOf(uint256 projectId, JBRuleset memory ruleset) internal view returns (JBApprovalStatus) {
         // If there is no ruleset ID to check the approval hook of, the approval hook is empty.
         // slither-disable-next-line incorrect-equality
-        if (ruleset.basedOnId  == 0) return JBApprovalStatus.Empty;
+        if (ruleset.basedOnId == 0) return JBApprovalStatus.Empty;
 
         // Get the struct of the ruleset with the approval hook.
         JBRuleset memory approvalHookRuleset = _getStructFor(projectId, ruleset.basedOnId);

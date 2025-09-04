@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import {ERC2771Context} from "@openzeppelin/contracts/metatx/ERC2771Context.sol";
+import {ERC2771Context, Context} from "@openzeppelin/contracts/metatx/ERC2771Context.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {mulDiv} from "@prb/math/src/Common.sol";
 
@@ -12,6 +12,8 @@ import {IJBPermissions} from "./interfaces/IJBPermissions.sol";
 import {IJBPriceFeed} from "./interfaces/IJBPriceFeed.sol";
 import {IJBPrices} from "./interfaces/IJBPrices.sol";
 import {IJBProjects} from "./interfaces/IJBProjects.sol";
+
+import {JBRuleset} from "./structs/JBRuleset.sol";
 
 /// @notice Manages and normalizes price feeds. Price feeds are contracts which return the "pricing currency" cost of 1
 /// "unit currency".
@@ -152,7 +154,6 @@ contract JBPrices is JBControlled, JBPermissioned, ERC2771Context, Ownable, IJBP
     function _msgSender() internal view override(ERC2771Context, Context) returns (address sender) {
         return ERC2771Context._msgSender();
     }
-
 
     //*********************************************************************//
     // ---------------------- external transactions ---------------------- //
