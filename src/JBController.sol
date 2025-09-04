@@ -22,7 +22,6 @@ import {IJBPriceFeed} from "./interfaces/IJBPriceFeed.sol";
 import {IJBPrices} from "./interfaces/IJBPrices.sol";
 import {IJBProjects} from "./interfaces/IJBProjects.sol";
 import {IJBProjectUriRegistry} from "./interfaces/IJBProjectUriRegistry.sol";
-import {IJBRulesetDataHook4_1} from "./interfaces/IJBRulesetDataHook4_1.sol";
 import {IJBRulesets} from "./interfaces/IJBRulesets.sol";
 import {IJBSplitHook} from "./interfaces/IJBSplitHook.sol";
 import {IJBSplits} from "./interfaces/IJBSplits.sol";
@@ -282,8 +281,7 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
     /// @param interfaceId The ID of the interface to check for adherence to.
     /// @return A flag indicating if the provided interface ID is supported.
     function supportsInterface(bytes4 interfaceId) public pure override returns (bool) {
-        return interfaceId == type(IJBController).interfaceId
-            || interfaceId == type(IJBProjectUriRegistry).interfaceId
+        return interfaceId == type(IJBController).interfaceId || interfaceId == type(IJBProjectUriRegistry).interfaceId
             || interfaceId == type(IJBDirectoryAccessControl).interfaceId || interfaceId == type(IJBMigratable).interfaceId
             || interfaceId == type(IJBPermissioned).interfaceId || interfaceId == type(IERC165).interfaceId;
     }
@@ -328,8 +326,8 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
     {
         address dataHook = ruleset.dataHook();
 
-        return dataHook != address(0) && IERC165(dataHook).supportsInterface(type(IJBRulesetDataHook4_1).interfaceId)
-            && IJBRulesetDataHook4_1(dataHook).hasMintPermissionFor({projectId: projectId, ruleset: ruleset, addr: addr});
+        return dataHook != address(0)
+            && IJBRulesetDataHook(dataHook).hasMintPermissionFor({projectId: projectId, ruleset: ruleset, addr: addr});
     }
 
     /// @notice The calldata. Preferred to use over `msg.data`.
@@ -407,7 +405,10 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
         }
 
         // Send the pending reserved tokens to the splits.
-        if (from.supportsInterface(type(IJBController).interfaceId) && IJBController(address(from)).pendingReservedTokenBalanceOf(projectId) > 0) {
+        if (
+            from.supportsInterface(type(IJBController).interfaceId)
+                && IJBController(address(from)).pendingReservedTokenBalanceOf(projectId) > 0
+        ) {
             IJBController(address(from)).sendReservedTokensToSplitsOf(projectId);
         }
     }
