@@ -2,6 +2,7 @@
 pragma solidity 0.8.23;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ERC2771Context} from "@openzeppelin/contracts/metatx/ERC2771Context.sol";
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
@@ -10,7 +11,7 @@ import {IJBTokenUriResolver} from "./interfaces/IJBTokenUriResolver.sol";
 
 /// @notice Stores project ownership and metadata.
 /// @dev Projects are represented as ERC-721s.
-contract JBProjects is ERC721, Ownable, IJBProjects {
+contract JBProjects is ERC721, ERC2771Context, Ownable, IJBProjects {
     //*********************************************************************//
     // --------------------- public stored properties -------------------- //
     //*********************************************************************//
@@ -30,7 +31,8 @@ contract JBProjects is ERC721, Ownable, IJBProjects {
     /// @param owner The owner of the contract who can set metadata.
     /// @param feeProjectOwner The address that will receive the fee-project. If `address(0)` the fee-project will not
     /// be minted.
-    constructor(address owner, address feeProjectOwner) ERC721("Juicebox Projects", "JUICEBOX") Ownable(owner) {
+    /// @param trustedForwarder The trusted forwarder for the ERC2771Context.
+    constructor(address owner, address feeProjectOwner, address trustedForwarder) ERC721("Juicebox Projects", "JUICEBOX") Ownable(owner) ERC2771Context(trustedForwarder) {
         if (feeProjectOwner != address(0)) {
             createFor(feeProjectOwner);
         }
@@ -60,6 +62,27 @@ contract JBProjects is ERC721, Ownable, IJBProjects {
 
         // Return the resolved URI.
         return resolver.getUri(projectId);
+    }
+
+    //*********************************************************************//
+    // -------------------------- internal views ------------------------- //
+    //*********************************************************************//
+
+    /// @dev `ERC-2771` specifies the context as being a single address (20 bytes).
+    function _contextSuffixLength() internal view override(ERC2771Context, Context) returns (uint256) {
+        return super._contextSuffixLength();
+    }
+
+    /// @notice The calldata. Preferred to use over `msg.data`.
+    /// @return calldata The `msg.data` of this call.
+    function _msgData() internal view override(ERC2771Context, Context) returns (bytes calldata) {
+        return ERC2771Context._msgData();
+    }
+
+    /// @notice The message's sender. Preferred to use over `msg.sender`.
+    /// @return sender The address which sent this call.
+    function _msgSender() internal view override(ERC2771Context, Context) returns (address sender) {
+        return ERC2771Context._msgSender();
     }
 
     //*********************************************************************//
