@@ -155,8 +155,12 @@ contract TestMintTokensOf_Local is TestBaseWorkflow {
     function test_GivenThatADataSourceHasPermissionedAnotherContractToMint() external {
         // it should be able to mint
 
+        // Get the current ruleset.
+        JBRuleset memory _ruleset = jbRulesets().currentOf(1);
+
         // setup: mock the datasource mint permission, allowing this contract to mint
-        bytes memory _encodedCall = abi.encodeCall(IJBRulesetDataHook.hasMintPermissionFor, (1, address(this)));
+        bytes memory _encodedCall =
+            abi.encodeCall(IJBRulesetDataHook.hasMintPermissionFor, (1, _ruleset, address(this)));
         bytes memory _willReturn = abi.encode(true);
 
         vm.mockCall(address(_DATA_HOOK), _encodedCall, _willReturn);

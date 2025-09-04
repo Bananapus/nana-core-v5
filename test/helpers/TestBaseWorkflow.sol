@@ -208,13 +208,13 @@ contract TestBaseWorkflow is Test, DeployPermit2 {
 
     // Deploys and initializes contracts for testing.
     function setUp() public virtual {
-        _jbPermissions = new JBPermissions();
-        _jbProjects = new JBProjects(_multisig, address(0));
+        _jbPermissions = new JBPermissions(_trustedForwarder);
+        _jbProjects = new JBProjects(_multisig, address(0), _trustedForwarder);
         _jbDirectory = new JBDirectory(_jbPermissions, _jbProjects, _multisig);
         _jbErc20 = new JBERC20();
         _jbTokens = new JBTokens(_jbDirectory, _jbErc20);
         _jbRulesets = new JBRulesets(_jbDirectory);
-        _jbPrices = new JBPrices(_jbDirectory, _jbPermissions, _jbProjects, _multisig);
+        _jbPrices = new JBPrices(_jbDirectory, _jbPermissions, _jbProjects, _multisig, _trustedForwarder);
         _jbSplits = new JBSplits(_jbDirectory);
         _jbFundAccessLimits = new JBFundAccessLimits(_jbDirectory);
         _jbFeelessAddresses = new JBFeelessAddresses(_multisig);
@@ -230,6 +230,7 @@ contract TestBaseWorkflow is Test, DeployPermit2 {
             _jbRulesets,
             _jbSplits,
             _jbTokens,
+            address(0), // omnichainRulesetOperator
             _trustedForwarder
         );
 

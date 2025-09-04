@@ -32,6 +32,52 @@ contract TestReceiveMigrationFrom_Local is JBControllerSetup {
         // mock call to from uriOf
         mockExpect(address(_from), abi.encodeCall(IJBProjectUriRegistry.uriOf, (_projectId)), abi.encode("Juicay"));
 
+        // Mock does not support the controller interface.
+        mockExpect(
+            address(_from),
+            abi.encodeCall(IERC165.supportsInterface, (type(IJBController).interfaceId)),
+            abi.encode(false)
+        );
+
+        vm.prank(address(directory));
+        IJBMigratable(address(_controller)).beforeReceiveMigrationFrom(_from, _projectId);
+        string memory stored = _controller.uriOf(_projectId);
+        assertEq(stored, "Juicay");
+    }
+
+    function test_GivenThatTheCallerIsDirectory_FromSupportsControllerInterface(uint8 tokenAmount) external {
+        // mock supports interface call
+        mockExpect(
+            address(_from),
+            abi.encodeCall(IERC165.supportsInterface, (type(IJBProjectUriRegistry).interfaceId)),
+            abi.encode(true)
+        );
+
+        // mock call to from uriOf
+        mockExpect(address(_from), abi.encodeCall(IJBProjectUriRegistry.uriOf, (_projectId)), abi.encode("Juicay"));
+
+        // Mock does not support the controller interface.
+        mockExpect(
+            address(_from),
+            abi.encodeCall(IERC165.supportsInterface, (type(IJBController).interfaceId)),
+            abi.encode(true)
+        );
+
+        mockExpect(
+            address(_from),
+            abi.encodeCall(IJBController.pendingReservedTokenBalanceOf, (_projectId)),
+            abi.encode(uint256(tokenAmount))
+        );
+
+        if (tokenAmount > 0) {
+            // mock call to from mintTokensOf
+            mockExpect(
+                address(_from),
+                abi.encodeCall(IJBController.sendReservedTokensToSplitsOf, (_projectId)),
+                abi.encode(tokenAmount)
+            );
+        }
+
         vm.prank(address(directory));
         IJBMigratable(address(_controller)).beforeReceiveMigrationFrom(_from, _projectId);
         string memory stored = _controller.uriOf(_projectId);
