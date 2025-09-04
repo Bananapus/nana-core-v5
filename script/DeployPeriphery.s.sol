@@ -38,13 +38,9 @@ contract DeployPeriphery is Script, Sphinx {
 
     bytes32 private DEADLINES_SALT = keccak256("JBDeadlines_");
     bytes32 private USD_NATIVE_FEED_SALT = keccak256("USD_FEED");
-    // Temporary flag to skip the contracts we deployed in the initial deployment run. Lets remove this flag after we
-    // re-deploy the needed contracts.
-    bool private SKIP_UNNEEDED = true;
 
     function configureSphinx() public override {
-        // TODO: Update to contain JB Emergency Developers
-        sphinxConfig.projectName = "nana-periphery";
+        sphinxConfig.projectName = "nana-core-v5";
         sphinxConfig.mainnets = ["ethereum", "optimism", "base", "arbitrum"];
         sphinxConfig.testnets = ["ethereum_sepolia", "optimism_sepolia", "base_sepolia", "arbitrum_sepolia"];
     }
@@ -64,9 +60,7 @@ contract DeployPeriphery is Script, Sphinx {
         IJBPriceFeed feed;
 
         IJBPriceFeed matchingPriceFeed;
-        if (!SKIP_UNNEEDED) {
-            matchingPriceFeed = new JBMatchingPriceFeed();
-        }
+        matchingPriceFeed = new JBMatchingPriceFeed();
 
         // Same as the chainlink example grace period.
         uint256 L2GracePeriod = 3600 seconds;
@@ -146,27 +140,23 @@ contract DeployPeriphery is Script, Sphinx {
         // If the native asset for this chain is ether, then the conversion from native asset to ether is 1:1.
         // NOTE: We need to refactor this the moment we add a chain where its native token is *NOT* ether.
         // As otherwise prices for the `NATIVE_TOKEN` will be incorrect!
-        if (!SKIP_UNNEEDED) {
-            core.prices.addPriceFeedFor(
-                0, JBCurrencyIds.ETH, uint32(uint160(JBConstants.NATIVE_TOKEN)), matchingPriceFeed
-            );
+        core.prices.addPriceFeedFor(0, JBCurrencyIds.ETH, uint32(uint160(JBConstants.NATIVE_TOKEN)), matchingPriceFeed);
 
-            // Deploy the JBDeadlines
-            if (!_isDeployed(DEADLINES_SALT, type(JBDeadline3Hours).creationCode, "")) {
-                new JBDeadline3Hours{salt: DEADLINES_SALT}();
-            }
+        // Deploy the JBDeadlines
+        if (!_isDeployed(DEADLINES_SALT, type(JBDeadline3Hours).creationCode, "")) {
+            new JBDeadline3Hours{salt: DEADLINES_SALT}();
+        }
 
-            if (!_isDeployed(DEADLINES_SALT, type(JBDeadline1Day).creationCode, "")) {
-                new JBDeadline1Day{salt: DEADLINES_SALT}();
-            }
+        if (!_isDeployed(DEADLINES_SALT, type(JBDeadline1Day).creationCode, "")) {
+            new JBDeadline1Day{salt: DEADLINES_SALT}();
+        }
 
-            if (!_isDeployed(DEADLINES_SALT, type(JBDeadline3Days).creationCode, "")) {
-                new JBDeadline3Days{salt: DEADLINES_SALT}();
-            }
+        if (!_isDeployed(DEADLINES_SALT, type(JBDeadline3Days).creationCode, "")) {
+            new JBDeadline3Days{salt: DEADLINES_SALT}();
+        }
 
-            if (!_isDeployed(DEADLINES_SALT, type(JBDeadline7Days).creationCode, "")) {
-                new JBDeadline7Days{salt: DEADLINES_SALT}();
-            }
+        if (!_isDeployed(DEADLINES_SALT, type(JBDeadline7Days).creationCode, "")) {
+            new JBDeadline7Days{salt: DEADLINES_SALT}();
         }
     }
 
