@@ -211,7 +211,6 @@ contract JBPermissions is ERC2771Context, IJBPermissions {
         return ERC2771Context._msgSender();
     }
 
-
     /// @notice Converts an array of permission IDs to a packed `uint256`.
     /// @param permissionIds The IDs of the permissions to pack.
     /// @return packed The packed value.
@@ -240,15 +239,18 @@ contract JBPermissions is ERC2771Context, IJBPermissions {
         // Make sure the 0 permission is not set.
         if (_includesPermission({permissions: packed, permissionId: 0})) revert JBPermissions_NoZeroPermission();
 
+        // Cache the sender.
+        address msgSender = _msgSender();
+
         // Enforce permissions. ROOT operators are allowed to set permissions so long as they are not setting another
         // ROOT permission or setting permissions for a wildcard project ID.
         if (
-            _msgSender() != account
+            msgSender != account
                 && (
                     _includesPermission({permissions: packed, permissionId: JBPermissionIds.ROOT})
                         || permissionsData.projectId == WILDCARD_PROJECT_ID
                         || !hasPermission({
-                            operator: _msgSender(),
+                            operator: msgSender,
                             account: account,
                             projectId: permissionsData.projectId,
                             permissionId: JBPermissionIds.ROOT,
@@ -267,7 +269,7 @@ contract JBPermissions is ERC2771Context, IJBPermissions {
             projectId: permissionsData.projectId,
             permissionIds: permissionsData.permissionIds,
             packed: packed,
-            caller: _msgSender()
+            caller: msgSender
         });
     }
 }
