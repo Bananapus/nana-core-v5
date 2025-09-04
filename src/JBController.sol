@@ -22,7 +22,6 @@ import {IJBPriceFeed} from "./interfaces/IJBPriceFeed.sol";
 import {IJBPrices} from "./interfaces/IJBPrices.sol";
 import {IJBProjects} from "./interfaces/IJBProjects.sol";
 import {IJBProjectUriRegistry} from "./interfaces/IJBProjectUriRegistry.sol";
-import {IJBRulesetDataHook4_1} from "./interfaces/IJBRulesetDataHook4_1.sol";
 import {IJBRulesets} from "./interfaces/IJBRulesets.sol";
 import {IJBSplitHook} from "./interfaces/IJBSplitHook.sol";
 import {IJBSplits} from "./interfaces/IJBSplits.sol";
