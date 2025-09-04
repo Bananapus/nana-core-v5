@@ -22,7 +22,7 @@ import {IJBPriceFeed} from "./interfaces/IJBPriceFeed.sol";
 import {IJBPrices} from "./interfaces/IJBPrices.sol";
 import {IJBProjects} from "./interfaces/IJBProjects.sol";
 import {IJBProjectUriRegistry} from "./interfaces/IJBProjectUriRegistry.sol";
-import {IJBRulesetDataHook} from "./interfaces/IJBRulesetDataHook.sol";
+import {IJBRulesetDataHook4_1} from "./interfaces/IJBRulesetDataHook4_1.sol";
 import {IJBRulesets} from "./interfaces/IJBRulesets.sol";
 import {IJBSplitHook} from "./interfaces/IJBSplitHook.sol";
 import {IJBSplits} from "./interfaces/IJBSplits.sol";
@@ -61,6 +61,7 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
     error JBController_MintNotAllowedAndNotTerminalOrHook();
     error JBController_NoReservedTokens();
     error JBController_OnlyDirectory(address sender, IJBDirectory directory);
+    error JBController_PendingReservedTokens(uint256 pendingReservedTokenBalance);
     error JBController_RulesetsAlreadyLaunched();
     error JBController_RulesetsArrayEmpty();
     error JBController_RulesetSetTokenNotAllowed();
@@ -92,6 +93,9 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
     /// @notice The contract that manages token minting and burning.
     IJBTokens public immutable override TOKENS;
 
+    /// @notice The address of the contract that manages omnichain ruleset ops.
+    address public immutable OMNICHAIN_RULESET_OPERATOR;
+
     //*********************************************************************//
     // --------------------- public stored properties -------------------- //
     //*********************************************************************//
@@ -117,6 +121,7 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
     /// @param rulesets A contract storing and managing project rulesets.
     /// @param splits A contract that stores splits for each project.
     /// @param tokens A contract that manages token minting and burning.
+    /// @param omnichainRulesetOperator The address of the contract that manages omnichain ruleset ops.
     /// @param trustedForwarder The trusted forwarder for the ERC2771Context.
     constructor(
         IJBDirectory directory,
@@ -127,6 +132,7 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
         IJBRulesets rulesets,
         IJBSplits splits,
         IJBTokens tokens,
+        address omnichainRulesetOperator,
         address trustedForwarder
     )
         JBPermissioned(permissions)
@@ -139,6 +145,7 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
         RULESETS = rulesets;
         SPLITS = splits;
         TOKENS = tokens;
+        OMNICHAIN_RULESET_OPERATOR = omnichainRulesetOperator;
     }
 
     //*********************************************************************//
@@ -275,7 +282,8 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
     /// @param interfaceId The ID of the interface to check for adherence to.
     /// @return A flag indicating if the provided interface ID is supported.
     function supportsInterface(bytes4 interfaceId) public pure override returns (bool) {
-        return interfaceId == type(IJBController).interfaceId || interfaceId == type(IJBProjectUriRegistry).interfaceId
+        return interfaceId == type(IJBController).interfaceId
+            || interfaceId == type(IJBProjectUriRegistry).interfaceId
             || interfaceId == type(IJBDirectoryAccessControl).interfaceId || interfaceId == type(IJBMigratable).interfaceId
             || interfaceId == type(IJBPermissioned).interfaceId || interfaceId == type(IERC165).interfaceId;
     }
@@ -307,19 +315,21 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
     /// @notice Indicates whether the provided address has mint permission for the project byway of the data hook.
     /// @param projectId The ID of the project to check.
     /// @param ruleset The ruleset to check.
-    /// @param addrs The address to check.
+    /// @param addr The address to check.
     /// @return A flag indicating if the provided address has mint permission for the project.
     function _hasDataHookMintPermissionFor(
         uint256 projectId,
         JBRuleset memory ruleset,
-        address addrs
+        address addr
     )
         internal
         view
         returns (bool)
     {
-        return ruleset.dataHook() != address(0)
-            && IJBRulesetDataHook(ruleset.dataHook()).hasMintPermissionFor(projectId, addrs);
+        address dataHook = ruleset.dataHook();
+
+        return dataHook != address(0) && IERC165(dataHook).supportsInterface(type(IJBRulesetDataHook4_1).interfaceId)
+            && IJBRulesetDataHook4_1(dataHook).hasMintPermissionFor({projectId: projectId, ruleset: ruleset, addr: addr});
     }
 
     /// @notice The calldata. Preferred to use over `msg.data`.
@@ -378,6 +388,28 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
             unitCurrency: unitCurrency,
             feed: feed
         });
+    }
+
+    /// @notice Prepares this controller to receive a project being migrated from another controller.
+    /// @dev This controller should not be the project's controller yet.
+    /// @param from The controller being migrated from.
+    /// @param projectId The ID of the project that will migrate to this controller.
+    function beforeReceiveMigrationFrom(IERC165 from, uint256 projectId) external override {
+        // Keep a reference to the sender.
+        address sender = _msgSender();
+
+        // Make sure the sender is the expected source controller.
+        if (sender != address(DIRECTORY)) revert JBController_OnlyDirectory(sender, DIRECTORY);
+
+        // If the sending controller is an `IJBProjectUriRegistry`, copy the project's metadata URI.
+        if (from.supportsInterface(type(IJBProjectUriRegistry).interfaceId)) {
+            uriOf[projectId] = IJBProjectUriRegistry(address(from)).uriOf(projectId);
+        }
+
+        // Send the pending reserved tokens to the splits.
+        if (from.supportsInterface(type(IJBController).interfaceId) && IJBController(address(from)).pendingReservedTokenBalanceOf(projectId) > 0) {
+            IJBController(address(from)).sendReservedTokensToSplitsOf(projectId);
+        }
     }
 
     /// @notice Burns a project's tokens or credits from the specific holder's balance.
@@ -460,9 +492,20 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
             permissionId: JBPermissionIds.DEPLOY_ERC20
         });
 
-        if (salt != bytes32(0)) salt = keccak256(abi.encodePacked(_msgSender(), salt));
+        // If a salt is provided, use it.
+        bytes32 saltHash = salt != bytes32(0) ? keccak256(abi.encodePacked(_msgSender(), salt)) : bytes32(0);
 
-        return TOKENS.deployERC20For({projectId: projectId, name: name, symbol: symbol, salt: salt});
+        // Emit the event.
+        emit DeployERC20({
+            projectId: projectId,
+            deployer: _msgSender(),
+            salt: salt,
+            saltHash: saltHash,
+            caller: _msgSender()
+        });
+
+        // Deploy the ERC-20 token with the hashed salt.
+        return TOKENS.deployERC20For({projectId: projectId, name: name, symbol: symbol, salt: saltHash});
     }
 
     /// @notice When a project receives reserved tokens, if it has a terminal for the token, this is used to pay the
@@ -577,18 +620,23 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
         // Make sure there are rulesets being queued.
         if (rulesetConfigurations.length == 0) revert JBController_RulesetsArrayEmpty();
 
+        // Keep a reference to the sender.
+        address sender = _msgSender();
+
         // Enforce permissions.
-        _requirePermissionFrom({
+        _requirePermissionAllowingOverrideFrom({
             account: PROJECTS.ownerOf(projectId),
             projectId: projectId,
-            permissionId: JBPermissionIds.QUEUE_RULESETS
+            permissionId: JBPermissionIds.QUEUE_RULESETS,
+            alsoGrantAccessIf: sender == OMNICHAIN_RULESET_OPERATOR
         });
 
         // Enforce permissions.
-        _requirePermissionFrom({
+        _requirePermissionAllowingOverrideFrom({
             account: PROJECTS.ownerOf(projectId),
             projectId: projectId,
-            permissionId: JBPermissionIds.SET_TERMINALS
+            permissionId: JBPermissionIds.SET_TERMINALS,
+            alsoGrantAccessIf: sender == OMNICHAIN_RULESET_OPERATOR
         });
 
         // If the project has already had rulesets, use `queueRulesetsOf(...)` instead.
@@ -619,10 +667,11 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
 
         emit Migrate({projectId: projectId, to: to, caller: msg.sender});
 
+        // Get a reference to the project's pending reserved token balance.
+        uint256 pendingReservedTokenBalance = pendingReservedTokenBalanceOf[projectId];
+
         // Mint any pending reserved tokens before migrating.
-        if (pendingReservedTokenBalanceOf[projectId] != 0) {
-            _sendReservedTokensToSplitsOf(projectId);
-        }
+        if (pendingReservedTokenBalance != 0) revert JBController_PendingReservedTokens(pendingReservedTokenBalance);
     }
 
     /// @notice Add new project tokens or credits to the specified beneficiary's balance. Optionally, reserve a portion
@@ -724,10 +773,11 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
         if (rulesetConfigurations.length == 0) revert JBController_RulesetsArrayEmpty();
 
         // Enforce permissions.
-        _requirePermissionFrom({
+        _requirePermissionAllowingOverrideFrom({
             account: PROJECTS.ownerOf(projectId),
             projectId: projectId,
-            permissionId: JBPermissionIds.QUEUE_RULESETS
+            permissionId: JBPermissionIds.QUEUE_RULESETS,
+            alsoGrantAccessIf: _msgSender() == OMNICHAIN_RULESET_OPERATOR
         });
 
         // Queue the rulesets.
@@ -735,23 +785,6 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
         rulesetId = _queueRulesets(projectId, rulesetConfigurations);
 
         emit QueueRulesets({rulesetId: rulesetId, projectId: projectId, memo: memo, caller: _msgSender()});
-    }
-
-    /// @notice Prepares this controller to receive a project being migrated from another controller.
-    /// @dev This controller should not be the project's controller yet.
-    /// @param from The controller being migrated from.
-    /// @param projectId The ID of the project that will migrate to this controller.
-    function beforeReceiveMigrationFrom(IERC165 from, uint256 projectId) external override {
-        // Keep a reference to the sender.
-        address sender = _msgSender();
-
-        // Make sure the sender is the expected source controller.
-        if (sender != address(DIRECTORY)) revert JBController_OnlyDirectory(sender, DIRECTORY);
-
-        // If the sending controller is an `IJBProjectUriRegistry`, copy the project's metadata URI.
-        if (from.supportsInterface(type(IJBProjectUriRegistry).interfaceId)) {
-            uriOf[projectId] = IJBProjectUriRegistry(address(from)).uriOf(projectId);
-        }
     }
 
     /// @notice Sends a project's pending reserved tokens to its reserved token splits.
