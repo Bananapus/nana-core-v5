@@ -14,6 +14,6 @@ contract TestInitialProject_Local is JBTest {
 
         vm.expectEmit();
         emit IJBProjects.Create(1, _owner, address(this));
-        _projects = new JBProjects(_owner, _owner);
+        _projects = new JBProjects(_owner, _owner, address(0));
     }
 }

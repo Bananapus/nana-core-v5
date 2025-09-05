@@ -156,13 +156,13 @@ contract TestUpcomingOf_Local is JBRulesetsSetup {
 
     function test_GivenStatusEQApprovedOrApprovalExpectedOrEmpty() external whenUpcomingRulesetIdDNEQZero {
         // it will return that ruleset
+        uint256 _latestQueuedId = _rulesets.latestRulesetIdOf(_projectId);
+        JBRuleset memory _queuedRuleset = _rulesets.getRulesetOf(_projectId, _latestQueuedId);
 
         // mock call to hook approvalStatusOf
         mockExpect(
             address(_mockApprovalHook),
-            abi.encodeCall(
-                IJBRulesetApprovalHook.approvalStatusOf, (_projectId, block.timestamp + 1, block.timestamp + _duration)
-            ),
+            abi.encodeCall(IJBRulesetApprovalHook.approvalStatusOf, (_projectId, _queuedRuleset)),
             abi.encode(JBApprovalStatus.ApprovalExpected)
         );
 
@@ -173,13 +173,13 @@ contract TestUpcomingOf_Local is JBRulesetsSetup {
 
     function test_GivenStatusDNEQApprovedOrApprovalExpectedOrEmpty() external whenUpcomingRulesetIdDNEQZero {
         // it will return the ruleset upcoming was based on
+        uint256 _latestQueuedId = _rulesets.latestRulesetIdOf(_projectId);
+        JBRuleset memory _queuedRuleset = _rulesets.getRulesetOf(_projectId, _latestQueuedId);
 
         // mock call to hook approvalStatusOf
         mockExpect(
             address(_mockApprovalHook),
-            abi.encodeCall(
-                IJBRulesetApprovalHook.approvalStatusOf, (_projectId, block.timestamp + 1, block.timestamp + _duration)
-            ),
+            abi.encodeCall(IJBRulesetApprovalHook.approvalStatusOf, (_projectId, _queuedRuleset)),
             abi.encode(JBApprovalStatus.Active)
         );
 
@@ -321,13 +321,13 @@ contract TestUpcomingOf_Local is JBRulesetsSetup {
 
     function test_GivenApprovalStatusIsApprovedOrEmpty() external whenUpcomingRulesetIdDNEQZero {
         // it will return a simulatedCycledRulesetBasedOn
+        uint256 _latestQueuedId = _rulesets.latestRulesetIdOf(_projectId);
+        JBRuleset memory _queuedRuleset = _rulesets.getRulesetOf(_projectId, _latestQueuedId);
 
         // mock call to hook approvalStatusOf
         mockExpect(
             address(_mockApprovalHook),
-            abi.encodeCall(
-                IJBRulesetApprovalHook.approvalStatusOf, (_projectId, block.timestamp + 1, block.timestamp + _duration)
-            ),
+            abi.encodeCall(IJBRulesetApprovalHook.approvalStatusOf, (_projectId, _queuedRuleset)),
             abi.encode(JBApprovalStatus.Approved)
         );
 
@@ -340,13 +340,13 @@ contract TestUpcomingOf_Local is JBRulesetsSetup {
         whenUpcomingRulesetIdDNEQZero
     {
         // it will return the simulatedCycledRulesetBasedOn it was based on
+        uint256 _latestQueuedId = _rulesets.latestRulesetIdOf(_projectId);
+        JBRuleset memory _queuedRuleset = _rulesets.getRulesetOf(_projectId, _latestQueuedId);
 
         // mock call to hook approvalStatusOf
         mockExpect(
             address(_mockApprovalHook),
-            abi.encodeCall(
-                IJBRulesetApprovalHook.approvalStatusOf, (_projectId, block.timestamp + 1, block.timestamp + _duration)
-            ),
+            abi.encodeCall(IJBRulesetApprovalHook.approvalStatusOf, (_projectId, _queuedRuleset)),
             abi.encode(JBApprovalStatus.Failed)
         );
 
@@ -419,15 +419,6 @@ contract TestUpcomingOf_Local is JBRulesetsSetup {
             address(this)
         );
 
-        // mock call to hook approvalStatusOf
-        mockExpect(
-            address(_mockApprovalHook),
-            abi.encodeCall(
-                IJBRulesetApprovalHook.approvalStatusOf, (_projectId, block.timestamp + 1, block.timestamp + 10 days)
-            ),
-            abi.encode(JBApprovalStatus.ApprovalExpected)
-        );
-
         // Send: Call from this contract as it's been mock authorized above.
         _rulesets.queueFor({
             projectId: _projectId,
@@ -438,6 +429,17 @@ contract TestUpcomingOf_Local is JBRulesetsSetup {
             metadata: _packedWithApprovalHook,
             mustStartAtOrAfter: uint48(block.timestamp + 10 days)
         });
+
+        // it will return the simulatedCycledRulesetBasedOn it was based on
+        uint256 _latestQueuedId = _rulesets.latestRulesetIdOf(_projectId);
+        JBRuleset memory _queuedRuleset = _rulesets.getRulesetOf(_projectId, _latestQueuedId);
+
+        // mock call to hook approvalStatusOf
+        mockExpect(
+            address(_mockApprovalHook),
+            abi.encodeCall(IJBRulesetApprovalHook.approvalStatusOf, (_projectId, _queuedRuleset)),
+            abi.encode(JBApprovalStatus.ApprovalExpected)
+        );
 
         vm.warp(block.timestamp + 11 days);
 
@@ -511,10 +513,13 @@ contract TestUpcomingOf_Local is JBRulesetsSetup {
 
         vm.warp(block.timestamp + 3 days);
 
+        uint256 _latestQueuedId = _rulesets.latestRulesetIdOf(_projectId);
+        JBRuleset memory _queuedRuleset = _rulesets.getRulesetOf(_projectId, _latestQueuedId);
+
         // mock call to hook approvalStatusOf
         mockExpect(
             address(_mockApprovalHook),
-            abi.encodeCall(IJBRulesetApprovalHook.approvalStatusOf, (_projectId, ogTimestamp + 1, ogTimestamp + 3 days)),
+            abi.encodeCall(IJBRulesetApprovalHook.approvalStatusOf, (_projectId, _queuedRuleset)),
             abi.encode(JBApprovalStatus.Failed)
         );
 

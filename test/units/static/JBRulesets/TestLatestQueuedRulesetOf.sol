@@ -162,12 +162,13 @@ contract TestLatestQueuedRulesetOf_Local is JBRulesetsSetup {
             mustStartAtOrAfter: _mustStartAt
         });
 
+        uint256 _latestQueuedId = _rulesets.latestRulesetIdOf(_projectId);
+        JBRuleset memory _queuedRuleset = _rulesets.getRulesetOf(_projectId, _latestQueuedId);
+
         // mock call to hook approvalStatusOf
         mockExpect(
             address(_mockApprovalHook),
-            abi.encodeCall(
-                IJBRulesetApprovalHook.approvalStatusOf, (_projectId, block.timestamp + 1, block.timestamp + _duration)
-            ),
+            abi.encodeCall(IJBRulesetApprovalHook.approvalStatusOf, (_projectId, _queuedRuleset)),
             abi.encode(JBApprovalStatus.ApprovalExpected)
         );
 

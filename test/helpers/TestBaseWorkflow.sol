@@ -15,7 +15,6 @@ import {JBPermissionIds} from "@bananapus/permission-ids/src/JBPermissionIds.sol
 import {JBControlled} from "../../src/abstract/JBControlled.sol";
 import {JBPermissioned} from "../../src/abstract/JBPermissioned.sol";
 import {JBController} from "../../src/JBController.sol";
-import {JBController4_1} from "../../src/JBController4_1.sol";
 import {JBDirectory} from "../../src/JBDirectory.sol";
 import {JBTerminalStore} from "../../src/JBTerminalStore.sol";
 import {JBFeelessAddresses} from "../../src/JBFeelessAddresses.sol";
@@ -56,7 +55,6 @@ import {JBSplitHookContext} from "../../src/structs/JBSplitHookContext.sol";
 import {IJBToken} from "../../src/interfaces/IJBToken.sol";
 import {JBSingleAllowance} from "../../src/structs/JBSingleAllowance.sol";
 import {IJBController} from "../../src/interfaces/IJBController.sol";
-import {IJBController4_1} from "../../src/interfaces/IJBController4_1.sol";
 import {IJBFeelessAddresses} from "../../src/interfaces/IJBFeelessAddresses.sol";
 import {IJBFundAccessLimits} from "../../src/interfaces/IJBFundAccessLimits.sol";
 import {IJBMigratable} from "../../src/interfaces/IJBMigratable.sol";
@@ -210,13 +208,13 @@ contract TestBaseWorkflow is Test, DeployPermit2 {
 
     // Deploys and initializes contracts for testing.
     function setUp() public virtual {
-        _jbPermissions = new JBPermissions();
-        _jbProjects = new JBProjects(_multisig, address(0));
+        _jbPermissions = new JBPermissions(_trustedForwarder);
+        _jbProjects = new JBProjects(_multisig, address(0), _trustedForwarder);
         _jbDirectory = new JBDirectory(_jbPermissions, _jbProjects, _multisig);
         _jbErc20 = new JBERC20();
         _jbTokens = new JBTokens(_jbDirectory, _jbErc20);
         _jbRulesets = new JBRulesets(_jbDirectory);
-        _jbPrices = new JBPrices(_jbDirectory, _jbPermissions, _jbProjects, _multisig);
+        _jbPrices = new JBPrices(_jbDirectory, _jbPermissions, _jbProjects, _multisig, _trustedForwarder);
         _jbSplits = new JBSplits(_jbDirectory);
         _jbFundAccessLimits = new JBFundAccessLimits(_jbDirectory);
         _jbFeelessAddresses = new JBFeelessAddresses(_multisig);
@@ -232,6 +230,7 @@ contract TestBaseWorkflow is Test, DeployPermit2 {
             _jbRulesets,
             _jbSplits,
             _jbTokens,
+            address(0), // omnichainRulesetOperator
             _trustedForwarder
         );
 

@@ -63,15 +63,17 @@ contract Deploy is Script, Sphinx {
         TRUSTED_FORWARDER =
             address(new ERC2771Forwarder{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(TRUSTED_FORWARDER_NAME));
 
-        JBPermissions permissions = new JBPermissions{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(TRUSTED_FORWARDER);
-        JBProjects projects =
-            new JBProjects{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(safeAddress(), safeAddress(), TRUSTED_FORWARDER);
+        JBPermissions permissions =
+            new JBPermissions{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(TRUSTED_FORWARDER);
+        JBProjects projects = new JBProjects{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(
+            safeAddress(), safeAddress(), TRUSTED_FORWARDER
+        );
         JBDirectory directory =
             new JBDirectory{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(permissions, projects, safeAddress());
-        JBSplits splits = new JBSplits{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(directory, TRUSTED_FORWARDER);
+        JBSplits splits = new JBSplits{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(directory);
         JBRulesets rulesets = new JBRulesets{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(directory);
         JBPrices prices = new JBPrices{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(
-            directory, permissions, projects, safeAddress()
+            directory, permissions, projects, safeAddress(), TRUSTED_FORWARDER
         );
         JBTokens tokens = new JBTokens{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(
             directory, new JBERC20{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}()
@@ -88,6 +90,8 @@ contract Deploy is Script, Sphinx {
                     rulesets: rulesets,
                     splits: splits,
                     tokens: tokens,
+                    // WARN: THIS MUST BE CHANGED FOR PRODUCTION!
+                    omnichainRulesetOperator: address(0),
                     trustedForwarder: TRUSTED_FORWARDER
                 })
             ),
