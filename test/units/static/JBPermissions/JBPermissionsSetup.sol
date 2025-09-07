@@ -13,6 +13,6 @@ contract JBPermissionsSetup is JBTest {
 
     function permissionsSetup() public virtual {
         // Instantiate the contract being tested
-        _permissions = new JBPermissions();
+        _permissions = new JBPermissions(address(0));
     }
 }

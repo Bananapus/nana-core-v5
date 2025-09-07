@@ -48,7 +48,7 @@ contract JBPermissions is ERC2771Context, IJBPermissions {
     //*********************************************************************//
 
     /// @param trustedForwarder The trusted forwarder for the ERC2771Context.
-    constructor(address trustedForwarder) ERC2771Context(trustedForwarder);
+    constructor(address trustedForwarder) ERC2771Context(trustedForwarder) {}
 
     //*********************************************************************//
     // ------------------------- external views -------------------------- //
@@ -186,29 +186,12 @@ contract JBPermissions is ERC2771Context, IJBPermissions {
     // -------------------------- internal views ------------------------- //
     //*********************************************************************//
 
-    /// @dev `ERC-2771` specifies the context as being a single address (20 bytes).
-    function _contextSuffixLength() internal view override(ERC2771Context, Context) returns (uint256) {
-        return super._contextSuffixLength();
-    }
-
     /// @notice Checks if a permission is included in a packed permissions data.
     /// @param permissions The packed permissions to check.
     /// @param permissionId The ID of the permission to check for.
     /// @return A flag indicating whether the permission is included.
     function _includesPermission(uint256 permissions, uint256 permissionId) internal pure returns (bool) {
         return ((permissions >> permissionId) & 1) == 1;
-    }
-
-    /// @notice The calldata. Preferred to use over `msg.data`.
-    /// @return calldata The `msg.data` of this call.
-    function _msgData() internal view override(ERC2771Context, Context) returns (bytes calldata) {
-        return ERC2771Context._msgData();
-    }
-
-    /// @notice The message's sender. Preferred to use over `msg.sender`.
-    /// @return sender The address which sent this call.
-    function _msgSender() internal view override(ERC2771Context, Context) returns (address sender) {
-        return ERC2771Context._msgSender();
     }
 
     /// @notice Converts an array of permission IDs to a packed `uint256`.

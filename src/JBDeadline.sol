@@ -3,6 +3,7 @@ pragma solidity 0.8.23;
 
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
+import {JBRuleset} from "./structs/JBRuleset.sol";
 import {JBApprovalStatus} from "./enums/JBApprovalStatus.sol";
 import {IJBRulesetApprovalHook} from "./interfaces/IJBRulesetApprovalHook.sol";
 
@@ -46,9 +47,11 @@ contract JBDeadline is IJBRulesetApprovalHook {
             // `Failed`.
             // Otherwise, if there is still time before the deadline, the ruleset's status is `ApprovalExpected`.
             // If we've already passed the deadline, the ruleset is `Approved`.
-            return (ruleset.start  - rulesetId < DURATION)
+            return (ruleset.start - ruleset.id < DURATION)
                 ? JBApprovalStatus.Failed
-                : (block.timestamp + DURATION < ruleset.start) ? JBApprovalStatus.ApprovalExpected : JBApprovalStatus.Approved;
+                : (block.timestamp + DURATION < ruleset.start)
+                    ? JBApprovalStatus.ApprovalExpected
+                    : JBApprovalStatus.Approved;
         }
     }
 

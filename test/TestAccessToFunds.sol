@@ -1140,6 +1140,13 @@ contract TestAccessToFunds_Local is TestBaseWorkflow {
             );
         }
 
+        // Ensure there is always a difference of at least 1 between the pay amount and payout limit.
+        vm.assume(
+            _nativeCurrencyPayoutLimit > _nativePayAmount
+                ? _nativeCurrencyPayoutLimit - _nativePayAmount > 1
+                : _nativePayAmount - _nativeCurrencyPayoutLimit > 1
+        );
+
         {
             // Package up the limits for the given terminal.
             JBFundAccessLimitGroup[] memory _fundAccessLimitGroup = new JBFundAccessLimitGroup[](1);

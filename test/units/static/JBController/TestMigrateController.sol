@@ -123,39 +123,17 @@ contract TestMigrateController_Local is JBControllerSetup {
         IJBMigratable(address(_controller)).migrate(1, IJBMigratable(address(this)));
     }
 
-    function test_GivenReservedTokenBalanceIsPending() external migrationIsAllowedByRuleset whenCallerHasPermission {
+    function test_Revert_When_GivenReservedTokenBalanceIsPending() external {
         // it should send reserved tokens to splits
         // set storage since we can't mock internal calls
         stdstore.target(address(IJBMigratable(address(_controller)))).sig("pendingReservedTokenBalanceOf(uint256)")
             .with_key(uint256(1)).checked_write(uint256(100));
 
-        // mock splitsOf call
-        JBSplit[] memory splitsArray = new JBSplit[](1);
-
-        splitsArray[0] = JBSplit({
-            preferAddToBalance: false,
-            percent: JBConstants.SPLITS_TOTAL_PERCENT / 2,
-            projectId: 1,
-            beneficiary: payable(address(this)),
-            lockedUntil: 0,
-            hook: IJBSplitHook(address(0))
-        });
-
-        bytes memory _encodedCallSplits = abi.encodeCall(IJBSplits.splitsOf, (1, block.timestamp, 1));
-        bytes memory _willReturnSplits = abi.encode(splitsArray);
-
-        mockExpect(address(splits), _encodedCallSplits, _willReturnSplits);
-
-        // mock mint call
-        bytes memory _mintCall = abi.encodeCall(IJBTokens.mintFor, (address(_controller), 1, 100));
-        bytes memory _mintReturn = abi.encode(address(0));
-        mockExpect(address(tokens), _mintCall, _mintReturn);
-
-        // event as expected
-        vm.expectEmit();
-        emit IJBController.SendReservedTokensToSplit(1, block.timestamp, 1, splitsArray[0], 50, address(directory));
-
         vm.prank(address(directory));
+
+        // Revert as expected, this functionality is no longer allowed since `JBController4_1`,
+        // Pending is send out as part of `beforeReceiveMigrationFrom`.
+        vm.expectRevert(abi.encodeWithSelector(JBController.JBController_PendingReservedTokens.selector, 100));
         IJBMigratable(address(_controller)).migrate(1, IJBMigratable(address(this)));
     }
 
