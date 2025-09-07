@@ -1,6 +1,6 @@
 # Bananapus Core
 
-This repository contains the core protocol contracts for Bananapus' Juicebox v4. Juicebox is a flexible toolkit for launching and managing a treasury-backed token on Ethereum and L2s.
+This repository contains the core protocol contracts for Bananapus' Juicebox V5 – a fork of V4 that fixes one essential bug in the buyback hook of revnets. Juicebox is a flexible toolkit for launching and managing a treasury-backed token on Ethereum and L2s.
 
 <details>
   <summary>Table of Contents</summary>
