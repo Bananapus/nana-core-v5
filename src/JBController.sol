@@ -410,6 +410,7 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
             from.supportsInterface(type(IJBController).interfaceId)
                 && IJBController(address(from)).pendingReservedTokenBalanceOf(projectId) > 0
         ) {
+            // slither-disable-next-line unused-return
             IJBController(address(from)).sendReservedTokensToSplitsOf(projectId);
         }
     }
