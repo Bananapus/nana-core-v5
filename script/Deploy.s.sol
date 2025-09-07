@@ -41,8 +41,7 @@ contract Deploy is Script, Sphinx {
     uint256 private CORE_DEPLOYMENT_NONCE = 1;
 
     function configureSphinx() public override {
-        // TODO: Update to contain JB Emergency Developers
-        sphinxConfig.projectName = "nana-core";
+        sphinxConfig.projectName = "nana-core-v5";
         sphinxConfig.mainnets = ["ethereum", "optimism", "base", "arbitrum"];
         sphinxConfig.testnets = ["ethereum_sepolia", "optimism_sepolia", "base_sepolia", "arbitrum_sepolia"];
     }
@@ -51,8 +50,7 @@ contract Deploy is Script, Sphinx {
     function run() public sphinx {
         // Set the manager, this can be changed and won't affect deployment addresses.
         MANAGER = safeAddress();
-        // NOTICE: THIS IS FOR TESTNET ONLY! REPLACE!
-        // TEMP set to be the *testing* safe for the nana-fee-project
+        // Set the owner of the fee project to be the project multisig.
         FEE_PROJECT_OWNER = safeAddress();
 
         // Deploy the protocol.
@@ -63,15 +61,17 @@ contract Deploy is Script, Sphinx {
         TRUSTED_FORWARDER =
             address(new ERC2771Forwarder{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(TRUSTED_FORWARDER_NAME));
 
-        JBPermissions permissions = new JBPermissions{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(TRUSTED_FORWARDER);
-        JBProjects projects =
-            new JBProjects{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(safeAddress(), safeAddress(), TRUSTED_FORWARDER);
+        JBPermissions permissions =
+            new JBPermissions{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(TRUSTED_FORWARDER);
+        JBProjects projects = new JBProjects{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(
+            safeAddress(), safeAddress(), TRUSTED_FORWARDER
+        );
         JBDirectory directory =
             new JBDirectory{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(permissions, projects, safeAddress());
-        JBSplits splits = new JBSplits{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(directory, TRUSTED_FORWARDER);
+        JBSplits splits = new JBSplits{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(directory);
         JBRulesets rulesets = new JBRulesets{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(directory);
         JBPrices prices = new JBPrices{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(
-            directory, permissions, projects, safeAddress()
+            directory, permissions, projects, safeAddress(), TRUSTED_FORWARDER
         );
         JBTokens tokens = new JBTokens{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(
             directory, new JBERC20{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}()
@@ -88,6 +88,8 @@ contract Deploy is Script, Sphinx {
                     rulesets: rulesets,
                     splits: splits,
                     tokens: tokens,
+                    // WARN: THIS MUST BE CHANGED FOR PRODUCTION!
+                    omnichainRulesetOperator: address(0),
                     trustedForwarder: TRUSTED_FORWARDER
                 })
             ),

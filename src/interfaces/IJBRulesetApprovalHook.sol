@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
+import {JBRuleset} from "./../structs/JBRuleset.sol";
 import {JBApprovalStatus} from "./../enums/JBApprovalStatus.sol";
 
 /// @notice `IJBRulesetApprovalHook`s are used to determine whether the next ruleset in the ruleset queue is approved or

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import {ERC2771Context} from "@openzeppelin/contracts/metatx/ERC2771Context.sol";
+import {ERC2771Context, Context} from "@openzeppelin/contracts/metatx/ERC2771Context.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {mulDiv} from "@prb/math/src/Common.sol";
 
@@ -152,7 +152,6 @@ contract JBPrices is JBControlled, JBPermissioned, ERC2771Context, Ownable, IJBP
     function _msgSender() internal view override(ERC2771Context, Context) returns (address sender) {
         return ERC2771Context._msgSender();
     }
-
 
     //*********************************************************************//
     // ---------------------- external transactions ---------------------- //

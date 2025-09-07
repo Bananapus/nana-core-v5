@@ -18,7 +18,7 @@ contract DeployUSDCFeeds is Script, Sphinx {
     uint256 CORE_DEPLOYMENT_NONCE = 1;
 
     function configureSphinx() public override {
-        sphinxConfig.projectName = "nana-core";
+        sphinxConfig.projectName = "nana-core-v5";
         sphinxConfig.mainnets = ["ethereum", "optimism", "base", "arbitrum"];
         sphinxConfig.testnets = ["ethereum_sepolia", "optimism_sepolia", "base_sepolia", "arbitrum_sepolia"];
     }
