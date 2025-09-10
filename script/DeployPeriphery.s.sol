@@ -140,16 +140,31 @@ contract DeployPeriphery is Script, Sphinx {
         }
         require(address(feed) != address(0), "Invalid price feed");
 
-        core.prices.addPriceFeedFor(0, JBCurrencyIds.USD, uint32(uint160(JBConstants.NATIVE_TOKEN)), feed);
+        core.prices.addPriceFeedFor({
+            projectId: 0,
+            pricingCurrency: JBCurrencyIds.USD,
+            unitCurrency: uint32(uint160(JBConstants.NATIVE_TOKEN)),
+            feed: feed
+        });
 
         // WARN: We are using the same price feed as the native token for the USD price feed. Which is only valid on
         // chains where Ether is the native asset. We *NEED* to update this when we deploy to a non-ether chain!
-        core.prices.addPriceFeedFor(0, JBCurrencyIds.USD, JBCurrencyIds.ETH, feed);
+        core.prices.addPriceFeedFor({
+            projectId: 0,
+            pricingCurrency: JBCurrencyIds.USD,
+            unitCurrency: JBCurrencyIds.ETH,
+            feed: feed
+        });
 
         // If the native asset for this chain is ether, then the conversion from native asset to ether is 1:1.
         // NOTE: We need to refactor this the moment we add a chain where its native token is *NOT* ether.
         // As otherwise prices for the `NATIVE_TOKEN` will be incorrect!
-        core.prices.addPriceFeedFor(0, JBCurrencyIds.ETH, uint32(uint160(JBConstants.NATIVE_TOKEN)), matchingPriceFeed);
+        core.prices.addPriceFeedFor({
+            projectId: 0,
+            pricingCurrency: JBCurrencyIds.ETH,
+            unitCurrency: uint32(uint160(JBConstants.NATIVE_TOKEN)),
+            feed: matchingPriceFeed
+        });
 
         // Deploy the JBDeadlines
         if (!_isDeployed(DEADLINES_SALT, type(JBDeadline3Hours).creationCode, "")) {
