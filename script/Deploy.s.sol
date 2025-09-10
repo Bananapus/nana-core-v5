@@ -77,24 +77,7 @@ contract Deploy is Script, Sphinx {
             directory, new JBERC20{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}()
         );
 
-        directory.setIsAllowedToSetFirstController(
-            address(
-                new JBController{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}({
-                    directory: directory,
-                    fundAccessLimits: new JBFundAccessLimits{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(directory),
-                    prices: prices,
-                    permissions: permissions,
-                    projects: projects,
-                    rulesets: rulesets,
-                    splits: splits,
-                    tokens: tokens,
-                    // WARN: THIS MUST BE CHANGED FOR PRODUCTION!
-                    omnichainRulesetOperator: address(0),
-                    trustedForwarder: TRUSTED_FORWARDER
-                })
-            ),
-            true
-        );
+        new JBFundAccessLimits{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(directory);
 
         JBFeelessAddresses feeless =
             new JBFeelessAddresses{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}(safeAddress());

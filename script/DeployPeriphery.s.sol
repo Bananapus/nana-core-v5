@@ -36,8 +36,14 @@ contract DeployPeriphery is Script, Sphinx {
     /// @notice tracks the deployment of the core contracts for the chain we are deploying to.
     CoreDeployment core;
 
+    address private TRUSTED_FORWARDER;
+
     bytes32 private DEADLINES_SALT = keccak256("JBDeadlines_");
     bytes32 private USD_NATIVE_FEED_SALT = keccak256("USD_FEED");
+
+    /// @notice The nonce that gets used across all chains to sync deployment addresses and allow for new deployments of
+    /// the same bytecode.
+    uint256 private CORE_DEPLOYMENT_NONCE = 1;
 
     function configureSphinx() public override {
         sphinxConfig.projectName = "nana-core-v5";
@@ -50,6 +56,9 @@ contract DeployPeriphery is Script, Sphinx {
         // Get the deployment addresses for the nana CORE for this chain.
         // We want to do this outside of the `sphinx` modifier.
         core = CoreDeploymentLib.getDeployment(vm.envOr("NANA_CORE_DEPLOYMENT_PATH", string("deployments/")));
+
+        // We use the same trusted forwarder as the core deployment.
+        TRUSTED_FORWARDER = core.permissions.trustedForwarder();
 
         // Deploy the protocol.
         deploy();
@@ -158,6 +167,25 @@ contract DeployPeriphery is Script, Sphinx {
         if (!_isDeployed(DEADLINES_SALT, type(JBDeadline7Days).creationCode, "")) {
             new JBDeadline7Days{salt: DEADLINES_SALT}();
         }
+
+        core.directory.setIsAllowedToSetFirstController(
+            address(
+                new JBController{salt: keccak256(abi.encode(CORE_DEPLOYMENT_NONCE))}({
+                    directory: core.directory,
+                    fundAccessLimits: core.fundAccess,
+                    prices: core.prices,
+                    permissions: core.permissions,
+                    projects: core.projects,
+                    rulesets: core.rulesets,
+                    splits: core.splits,
+                    tokens: core.tokens,
+                    // WARN: THIS MUST BE CHANGED FOR PRODUCTION!
+                    omnichainRulesetOperator: address(0),
+                    trustedForwarder: TRUSTED_FORWARDER
+                })
+            ),
+            true
+        );
     }
 
     function _isDeployed(
