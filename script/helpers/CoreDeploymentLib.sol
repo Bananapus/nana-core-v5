@@ -28,7 +28,7 @@ struct CoreDeployment {
     JBRulesets rulesets;
     // NOTICE: Temporarily commented out as its no longer deployed on first deployment.
     // Once its deployed we can uncomment this (and the setter in `getDeployment(..)`).
-    // JBController controller;
+    JBController controller;
     JBMultiTerminal terminal;
     JBTerminalStore terminalStore;
     JBPrices prices;
@@ -80,8 +80,7 @@ library CoreDeploymentLib {
 
         deployment.rulesets = JBRulesets(_getDeploymentAddress(path, PROJECT_NAME, network_name, "JBRulesets"));
 
-        // deployment.controller = JBController(_getDeploymentAddress(path, PROJECT_NAME, network_name,
-        // "JBController"));
+        deployment.controller = JBController(_getDeploymentAddress(path, PROJECT_NAME, network_name, "JBController"));
 
         deployment.terminal =
             JBMultiTerminal(_getDeploymentAddress(path, PROJECT_NAME, network_name, "JBMultiTerminal"));
