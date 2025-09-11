@@ -80,8 +80,7 @@ library CoreDeploymentLib {
 
         deployment.rulesets = JBRulesets(_getDeploymentAddress(path, PROJECT_NAME, network_name, "JBRulesets"));
 
-        deployment.controller = JBController(_getDeploymentAddress(path, PROJECT_NAME, network_name,
-        "JBController"));
+        deployment.controller = JBController(_getDeploymentAddress(path, PROJECT_NAME, network_name, "JBController"));
 
         deployment.terminal =
             JBMultiTerminal(_getDeploymentAddress(path, PROJECT_NAME, network_name, "JBMultiTerminal"));
