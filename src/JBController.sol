@@ -54,17 +54,18 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
     // --------------------------- custom errors ------------------------- //
     //*********************************************************************//
 
-    error JBController_AddingPriceFeedNotAllowed();
+    error JBController_AddingPriceFeedNotAllowed(uint256 projectId);
     error JBController_CreditTransfersPaused();
     error JBController_InvalidCashOutTaxRate(uint256 rate, uint256 limit);
     error JBController_InvalidReservedPercent(uint256 percent, uint256 limit);
-    error JBController_MintNotAllowedAndNotTerminalOrHook();
+    error JBController_MintNotAllowedAndNotTerminalOrHook(address caller);
     error JBController_NoReservedTokens();
     error JBController_OnlyDirectory(address sender, IJBDirectory directory);
     error JBController_PendingReservedTokens(uint256 pendingReservedTokenBalance);
-    error JBController_RulesetsAlreadyLaunched();
+    error JBController_RulesetsAlreadyLaunched(uint256 projectId);
     error JBController_RulesetsArrayEmpty();
-    error JBController_RulesetSetTokenNotAllowed();
+    error JBController_RulesetSetTokenNotAllowed(uint256 projectId);
+    error JBController_TerminalTokensNotTransferred();
     error JBController_ZeroTokensToBurn();
     error JBController_ZeroTokensToMint();
 
@@ -94,7 +95,7 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
     IJBTokens public immutable override TOKENS;
 
     /// @notice The address of the contract that manages omnichain ruleset ops.
-    address public immutable OMNICHAIN_RULESET_OPERATOR;
+    address public immutable override OMNICHAIN_RULESET_OPERATOR;
 
     //*********************************************************************//
     // --------------------- public stored properties -------------------- //
@@ -170,7 +171,8 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
         returns (JBRulesetWithMetadata[] memory rulesets)
     {
         // Get the rulesets (without metadata).
-        JBRuleset[] memory baseRulesets = RULESETS.allOf(projectId, startingId, size);
+        JBRuleset[] memory baseRulesets =
+            RULESETS.allOf({projectId: projectId, startingId: startingId, size: size});
 
         // Keep a reference to the number of rulesets.
         uint256 numberOfRulesets = baseRulesets.length;
@@ -215,7 +217,7 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
         override
         returns (JBRuleset memory ruleset, JBRulesetMetadata memory metadata)
     {
-        ruleset = RULESETS.getRulesetOf(projectId, rulesetId);
+        ruleset = RULESETS.getRulesetOf({projectId: projectId, rulesetId: rulesetId});
         metadata = ruleset.expandMetadata();
     }
 
@@ -308,7 +310,7 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
     /// @param terminal The address to check.
     /// @return A flag indicating if the provided address is a terminal for the project.
     function _isTerminalOf(uint256 projectId, address terminal) internal view returns (bool) {
-        return DIRECTORY.isTerminalOf(projectId, IJBTerminal(terminal));
+        return DIRECTORY.isTerminalOf({projectId: projectId, terminal: IJBTerminal(terminal)});
     }
 
     /// @notice Indicates whether the provided address has mint permission for the project byway of the data hook.
@@ -379,7 +381,7 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
         JBRuleset memory ruleset = _currentRulesetOf(projectId);
 
         // Make sure the project's ruleset allows adding price feeds.
-        if (!ruleset.allowAddPriceFeed()) revert JBController_AddingPriceFeedNotAllowed();
+        if (!ruleset.allowAddPriceFeed()) revert JBController_AddingPriceFeedNotAllowed(projectId);
 
         PRICES.addPriceFeedFor({
             projectId: projectId,
@@ -413,6 +415,18 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
             // slither-disable-next-line unused-return
             IJBController(address(from)).sendReservedTokensToSplitsOf(projectId);
         }
+    }
+
+    /// @notice Called after this controller has been set as the project's controller in the directory.
+    /// @dev Can only be called by the directory.
+    /// @param from The controller being migrated from.
+    /// @param projectId The ID of the project that migrated to this controller.
+    function afterReceiveMigrationFrom(IERC165 from, uint256 projectId) external override {
+        from; // Suppress unused variable warning.
+        projectId; // Suppress unused variable warning.
+
+        // Make sure the sender is the directory.
+        if (_msgSender() != address(DIRECTORY)) revert JBController_OnlyDirectory(_msgSender(), DIRECTORY);
     }
 
     /// @notice Burns a project's tokens or credits from the specific holder's balance.
@@ -548,7 +562,9 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
         });
 
         // Make sure that the terminal received the tokens.
-        assert(IERC20(address(token)).allowance(address(this), address(terminal)) == 0);
+        if (IERC20(address(token)).allowance(address(this), address(terminal)) != 0) {
+            revert JBController_TerminalTokensNotTransferred();
+        }
     }
 
     /// @notice Creates a project.
@@ -583,14 +599,14 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
         }
 
         // Set this contract as the project's controller in the directory.
-        DIRECTORY.setControllerOf(projectId, IERC165(this));
+        DIRECTORY.setControllerOf({projectId: projectId, controller: IERC165(this)});
 
         // Configure the terminals.
-        _configureTerminals(projectId, terminalConfigurations);
+        _configureTerminals({projectId: projectId, terminalConfigurations: terminalConfigurations});
 
         // Queue the rulesets.
         // slither-disable-next-line reentrancy-events
-        uint256 rulesetId = _queueRulesets(projectId, rulesetConfigurations);
+        uint256 rulesetId = _queueRulesets({projectId: projectId, rulesetConfigurations: rulesetConfigurations});
 
         emit LaunchProject({
             rulesetId: rulesetId,
@@ -644,18 +660,18 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
 
         // If the project has already had rulesets, use `queueRulesetsOf(...)` instead.
         if (RULESETS.latestRulesetIdOf(projectId) > 0) {
-            revert JBController_RulesetsAlreadyLaunched();
+            revert JBController_RulesetsAlreadyLaunched(projectId);
         }
 
         // Set this contract as the project's controller in the directory.
-        DIRECTORY.setControllerOf(projectId, IERC165(this));
+        DIRECTORY.setControllerOf({projectId: projectId, controller: IERC165(this)});
 
         // Configure the terminals.
-        _configureTerminals(projectId, terminalConfigurations);
+        _configureTerminals({projectId: projectId, terminalConfigurations: terminalConfigurations});
 
         // Queue the first ruleset.
         // slither-disable-next-line reentrancy-events
-        rulesetId = _queueRulesets(projectId, rulesetConfigurations);
+        rulesetId = _queueRulesets({projectId: projectId, rulesetConfigurations: rulesetConfigurations});
 
         emit LaunchRulesets({rulesetId: rulesetId, projectId: projectId, memo: memo, caller: _msgSender()});
     }
@@ -673,7 +689,7 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
         // Get a reference to the project's pending reserved token balance.
         uint256 pendingReservedTokenBalance = pendingReservedTokenBalanceOf[projectId];
 
-        // Mint any pending reserved tokens before migrating.
+        // Revert if there are pending reserved tokens that should be sent before migrating.
         if (pendingReservedTokenBalance != 0) revert JBController_PendingReservedTokens(pendingReservedTokenBalance);
     }
 
@@ -725,7 +741,7 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
             ruleset.id != 0 && !ruleset.allowOwnerMinting() && !_isTerminalOf(projectId, _msgSender())
                 && _msgSender() != address(ruleset.dataHook())
                 && !_hasDataHookMintPermissionFor(projectId, ruleset, _msgSender())
-        ) revert JBController_MintNotAllowedAndNotTerminalOrHook();
+        ) revert JBController_MintNotAllowedAndNotTerminalOrHook(_msgSender());
 
         // Determine the reserved percent to use.
         reservedPercent = useReservedPercent ? ruleset.reservedPercent() : 0;
@@ -785,7 +801,7 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
 
         // Queue the rulesets.
         // slither-disable-next-line reentrancy-events
-        rulesetId = _queueRulesets(projectId, rulesetConfigurations);
+        rulesetId = _queueRulesets({projectId: projectId, rulesetConfigurations: rulesetConfigurations});
 
         emit QueueRulesets({rulesetId: rulesetId, projectId: projectId, memo: memo, caller: _msgSender()});
     }
@@ -844,7 +860,7 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
         if (ruleset.id == 0) ruleset = _upcomingRulesetOf(projectId);
 
         // If owner minting is disabled for the ruleset, the owner cannot change the token.
-        if (!ruleset.allowSetCustomToken()) revert JBController_RulesetSetTokenNotAllowed();
+        if (!ruleset.allowSetCustomToken()) revert JBController_RulesetSetTokenNotAllowed(projectId);
 
         TOKENS.setTokenFor({projectId: projectId, token: token});
     }
@@ -902,14 +918,14 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
 
     /// @notice Set up a project's terminals.
     /// @param projectId The ID of the project to set up terminals for.
-    /// @param terminalConfigs The terminals to set up.
-    function _configureTerminals(uint256 projectId, JBTerminalConfig[] calldata terminalConfigs) internal {
+    /// @param terminalConfigurations The terminals to set up.
+    function _configureTerminals(uint256 projectId, JBTerminalConfig[] calldata terminalConfigurations) internal {
         // Initialize an array of terminals to populate.
-        IJBTerminal[] memory terminals = new IJBTerminal[](terminalConfigs.length);
+        IJBTerminal[] memory terminals = new IJBTerminal[](terminalConfigurations.length);
 
-        for (uint256 i; i < terminalConfigs.length; i++) {
+        for (uint256 i; i < terminalConfigurations.length; i++) {
             // Set the terminal configuration being iterated on.
-            JBTerminalConfig memory terminalConfig = terminalConfigs[i];
+            JBTerminalConfig memory terminalConfig = terminalConfigurations[i];
 
             // Add the accounting contexts for the specified tokens.
             terminalConfig.terminal.addAccountingContextsFor({
@@ -922,7 +938,7 @@ contract JBController is JBPermissioned, ERC2771Context, IJBController, IJBMigra
         }
 
         // Set the terminals in the directory.
-        if (terminalConfigs.length > 0) {
+        if (terminalConfigurations.length > 0) {
             DIRECTORY.setTerminalsOf({projectId: projectId, terminals: terminals});
         }
     }

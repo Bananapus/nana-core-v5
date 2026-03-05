@@ -21,7 +21,7 @@ contract JBTokens is JBControlled, IJBTokens {
 
     error JBTokens_EmptyName();
     error JBTokens_EmptySymbol();
-    error JBTokens_EmptyToken();
+    error JBTokens_EmptyToken(uint256 projectId);
     error JBTokens_InsufficientCredits(uint256 count, uint256 creditBalance);
     error JBTokens_InsufficientTokensToBurn(uint256 count, uint256 tokenBalance);
     error JBTokens_OverflowAlert(uint256 value, uint256 limit);
@@ -76,8 +76,8 @@ contract JBTokens is JBControlled, IJBTokens {
 
     /// @notice The total balance a holder has for a specified project, including both tokens and token credits.
     /// @param holder The holder to get a balance for.
-    /// @param projectId The project to get the `_holder`s balance for.
-    /// @return balance The combined token and token credit balance of the `_holder
+    /// @param projectId The project to get the `holder`'s balance for.
+    /// @return balance The combined token and token credit balance of the `holder`.
     function totalBalanceOf(address holder, uint256 projectId) external view override returns (uint256 balance) {
         // Get a reference to the holder's credits for the project.
         balance = creditBalanceOf[holder][projectId];
@@ -295,6 +295,11 @@ contract JBTokens is JBControlled, IJBTokens {
         // Save a reference to whether there a token exists.
         bool tokensWereClaimed = token != IJBToken(address(0));
 
+        // The total supply after minting can't exceed the maximum value storable in a uint208.
+        if (totalSupplyOf(projectId) + count > type(uint208).max) {
+            revert JBTokens_OverflowAlert(totalSupplyOf(projectId) + count, type(uint208).max);
+        }
+
         if (tokensWereClaimed) {
             // If tokens should be claimed, mint tokens into the holder's wallet.
             // slither-disable-next-line reentrancy-events
@@ -303,11 +308,6 @@ contract JBTokens is JBControlled, IJBTokens {
             // Otherwise, add the tokens to their credits and the credit supply.
             creditBalanceOf[holder][projectId] += count;
             totalCreditSupplyOf[projectId] += count;
-        }
-
-        // The total supply can't exceed the maximum value storable in a uint208.
-        if (totalSupplyOf(projectId) > type(uint208).max) {
-            revert JBTokens_OverflowAlert(totalSupplyOf(projectId), type(uint208).max);
         }
 
         emit Mint({
@@ -325,7 +325,7 @@ contract JBTokens is JBControlled, IJBTokens {
     /// @param token The new token's address.
     function setTokenFor(uint256 projectId, IJBToken token) external override onlyControllerOf(projectId) {
         // Can't set to the zero address.
-        if (token == IJBToken(address(0))) revert JBTokens_EmptyToken();
+        if (token == IJBToken(address(0))) revert JBTokens_EmptyToken(projectId);
 
         // Can't set a token if the project is already associated with another token.
         if (tokenOf[projectId] != IJBToken(address(0))) revert JBTokens_ProjectAlreadyHasToken(tokenOf[projectId]);
